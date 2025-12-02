@@ -1,0 +1,32 @@
+
+version: 0.2
+
+env:
+  variables:
+    IMAGE_REPO_NAME: "product-app"
+    IMAGE_TAG: "latest"
+  parameter-store:
+    AWS_ACCOUNT_ID: "/pipeline/aws/account_id"
+    AWS_REGION: "/pipeline/aws/region"
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR in $AWS_REGION...
+      - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}
+      - aws ecr describe-repositories --repository-names ${IMAGE_REPO_NAME} || aws ecr create-repository --repository-name ${IMAGE_REPO_NAME}
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+  build:
+    commands:
+      - echo Build started on `date`
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - printf '{"ImageURI":"%s"}' $REPOSITORY_URI:$IMAGE_TAG > imageDetail.json
+artifacts:
+  files:
+    - imageDetail.json
+  discard-paths: yes
