@@ -3,7 +3,7 @@ version: 0.2
 
 env:
   variables:
-    IMAGE_REPO_NAME: "batch-jfs"
+    IMAGE_REPO_NAME: "batch-jfs"        # Align with your ECR repo name
     IMAGE_TAG: "latest"
   parameter-store:
     AWS_ACCOUNT_ID: "/pipeline/aws/account_id"
@@ -25,8 +25,9 @@ phases:
 
   post_build:
     commands:
-      - echo Pushing the Docker image...
+      - echo Pushing the Docker image to ECR...
       - docker push $REPOSITORY_URI:$IMAGE_TAG
+      # ECS deploy action expects this format: [{"name":"<container-name>","imageUri":"<image-uri>"}]
       - printf '[{"name":"batch-jfs-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
